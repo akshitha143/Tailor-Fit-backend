@@ -1,26 +1,31 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const admin = require("../config/firebase");
-const User = require("../models/user");
+const User = require("../models/User");
 const { generateOTP, sendOTPEmail } = require("../utils/otpService");
 
-const registerUser = async (req, res) => {
+const registerUser = async (req, res) => 
+{
   const { email, password, confirmPassword, username } = req.body;
 
   if (password !== confirmPassword) 
     {
       return res.status(400).json({ message: "Passwords do not match" });
-  }
+    }
   
   try {
       let firebaseUser;
   
-      try {
+      try 
+      {
+
           firebaseUser = await admin.auth().getUserByEmail(email);
           return res.status(400).json({ message: "Email already in use" });
-      } catch (error) {
+      } 
+      catch (error) 
+      {
           if (error.code !== "auth/user-not-found") {
-              return res.status(500).json({ message: "Error checking Firebase user", error: error.message });
+              return res.status(204).json({ message: "Error checking Firebase user", error: error.message });
           }
       }
   
@@ -136,13 +141,14 @@ const loginUser = async (req, res) =>
           { expiresIn: '1h' }
       );
 
-        res.json({ message: "Login successful",id:user._id,token: token});
+        res.status(200).json({ message: "Login successful",id:user._id,token: token});
     } catch (error) {
         res.status(500).json({message: error.message});
     }
 };
 
-const forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res) => 
+{
     const { email } = req.body;
     try {
         const user = await User.findOne({ email });

@@ -1,35 +1,36 @@
 const Payment = require("../models/Payment");
 const razorpay = require('../config/razorpay');
-const axios = require("axios");
-const path = require('path');
-const { validateWebhookSignature } = require('razorpay/dist/utils/razorpay-utils');
+const Order=require('../models/Order');
 
-const createPayment = async (req, res) => 
-{
+
+const createPayment = async (userId, orderId) => {
     try 
     {
-        const userId = "67ed1b8cc3530ee4a7f936b8";
-        const orderId = req.params.orderId;
-        const token = req.headers.authorization;
         if (!orderId) 
         {
-            return res.status(400).json({ message: "Order ID is required" });
+            return { status: 400, success: false, message: "Order ID is required" };
         }
 
-        // Fetch order details
-        const orderResponse = await axios.get(`http://localhost:8000/api/orders/getorderbyid/${orderId}`,
-            {headers: { Authorization: token }}
-        );
-        const order = orderResponse.data;
-
+        const order = await Order.findById(orderId);
         if (!order) 
         {
-            return res.status(404).json({ message: "Order not found" });
+            return { status: 204, success: false, message: "Order not found" };
         }
 
+        const acceptedItems = order.items.filter(item => item.accepted === "true");
 
-       const amount = order.order.totalAmount; 
-       await order.save();
+        if (acceptedItems.length === 0) 
+        {
+            return {
+                status: 204,
+                success: false,
+                message: "No items accepted by tailors"
+            };
+        }
+
+        const amount = order.totalAmount;
+        await order.save(); 
+
         const options = {
             amount: amount * 100,
             currency: "INR",
@@ -37,40 +38,36 @@ const createPayment = async (req, res) =>
             notes: { userId, orderId }
         };
 
-        if(order.accepted==="true")
-        {
-            const razorpayOrder = await razorpay.orders.create(options);
-            console.log(razorpayOrder);
-        
-            const payment = new Payment({
-                userId,
-                orderId,
-                razorpayOrderId: razorpayOrder.id,
-                amount,
-                status: "pending"
-            });
-            console.log(payment);
-            await payment.save();
+        const razorpayOrder = await razorpay.orders.create(options);
 
-            res.status(201).json({
-                success: true,
-                message: "Payment initiated",
-                razorpayOrder
-            });
-    }
+        const payment = new Payment({
+            userId,
+            orderId,
+            razorpayOrderId: razorpayOrder.id,
+            amount,
+            status: "pending"
+        });
 
-    else
-    {
-        console.log("Order not accepted yet");
-        res.status(400).json({ message: "Order not accepted yet" });
-    }
-}
-    
-   catch (error) 
-    {
-        res.status(500).json({ message: "Error creating payment", error: error.message });
+        await payment.save();
+
+        return {
+            status: 201,
+            success: true,
+            message: "Payment created successfully",
+            razorpayOrder
+        };
+
+    } catch (error) {
+        console.error("Payment creation failed:", error.message);
+        return {
+            status: 500,
+            success: false,
+            message: "Internal Server Error",
+            error: error.message
+        };
     }
 };
+
 
 const verifyPayment = async(req, res) => 
 {
@@ -112,11 +109,12 @@ const verifyPayment = async(req, res) =>
             if (payment) 
             {
     
-                await axios.put(`http://localhost:8000/api/orders/updateorder/${payment.orderId}`, 
-                {
-                    status: "paid"
-                });
-
+                // await axios.put(`http://localhost:8000/api/orders/updateorder/${payment.orderId}`, 
+                // {
+                //     status: "paid"
+                // });
+                order.payment_status="paid";
+                order.save();
                 console.log("Payment Successful, Order Updated:", payment_id);
             }
         }

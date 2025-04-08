@@ -57,7 +57,7 @@ const getProductById=async(req,res) =>
     const id  = req.params.id;
 
     const product=await Product.findById(id);
-    if(!product)  return res.status(404).json({messsage:"product not found"});
+    if(!product)  return res.status(204).json({messsage:"product not found"});
     res.status(200).json(
         {
             success:true,
@@ -77,7 +77,7 @@ const updateProduct=async(req,res) =>
     {
         const id  = req.params.id;
         const product=await Product.findByIdAndUpdate(id,req.body,{new:true});
-        if(!product) return res.status(404).json({message:'product not found'});
+        if(!product) return res.status(204).json({message:'product not found'});
         res.status(200).json({
             success:true,
             data:product

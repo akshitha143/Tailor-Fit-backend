@@ -1,25 +1,27 @@
 const Order = require("../models/Order");
-const axios = require("axios");
-const Tailor = require("../models/Tailor");
-const mongoose=require('mongoose');
-const Cart = require("../models/Cart");
-const Product = require("../models/productModel");
+const Cart=require("../models/Cart");
+const {clearCart} = require("../controllers/cartController");
+const {createPayment}=require("../controllers/paymentController");
+
 const placeOrder = async (req, res) => 
 {
     try 
     {
-        const userId = "67f0e33ec34207c80c80f63a";
+       // const userId = "67f0e33ec34207c80c80f63a";  
+            const userId=req.user.userId;
+            if(!userId) return res.status(400).json({message:"userId is required"});
         // const token = req.headers.authorization;
         // const cartResponse = await axios.get(
         //     `http://localhost:8000/api/cart/getcart/${userId}`,
         //     { headers: { Authorization: token } }
-        // );
+        // ); 
 
         // const cart = cartResponse.data;
          const cart = await Cart.findOne({ userId });
         //const tailorIds = cart.items.map(item => new mongoose.Types.ObjectId(item.tailorId));
 
-        if (!cart || cart.items.length === 0) {
+        if (!cart || cart.items.length === 0) 
+        {
             return res.status(400).json({ message: "Your cart is empty" });
         }
         const totalAmount = cart.totalPrice;
@@ -50,54 +52,61 @@ const placeOrder = async (req, res) =>
         });
 
 
-    } catch (error) {
+    } 
+    catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
 
 const confirmAndPayOrder = async (req, res) => {
-    try {
+    try 
+    {
         const orderId = req.params.orderId;
-        const token = req.headers.authorization;
-        
-        const paymentResponse = await axios.post(
-            `http://localhost:8000/api/payment/create/${orderId}`,
-            {}, 
-            { headers: { Authorization: token } }
-        );
-        
+        const userId=req.user.userId;
 
+        //const token = req.headers.authorization;
+        
+        // const paymentResponse = await axios.post(
+        //     `http://localhost:8000/api/payment/create/${orderId}`,
+        //     {}, 
+        //     { headers: { Authorization: token } }
+        // );
+
+        const paymentResponse=await createPayment(orderId,userId);
         const { status, error } = paymentResponse.data;
 
         if (status !== "completed") 
         {
             return res.status(400).json({ 
-                message: "Payment failed. Order not confirmed.", 
+                message: "Payment failed. Order not confirmed.",
                 reason: error || "Unknown error"
             });
         }
 
         
-        await axios.delete(
-            `http://localhost:8000/api/cart/clear/${userId}`,
-            { headers: { Authorization: token } }
-        );
+        // await axios.delete(
+        //     `http://localhost:8000/api/cart/clear/${userId}`,
+        //     { headers: { Authorization: token } }
+        // );
+
+        await clearCart(userId);
 
         res.status(200).json({
             success: true,
-            message: "Order confirmed and payment successful",
-            order
+            message: "Order confirmed and payment successful"
         });
 
-    } catch (error) {
+    } 
+    catch (error) {
        console.error(error.message); 
         res.status(500).json({ error: error.message });
     }
 };
 
 
-const getAllOrders = async (req, res) => {
+const getAllOrders = async (req, res) => 
+{
     try {
         // const userId = req.user.userId;
         const userId = "67f0e33ec34207c80c80f63a";
@@ -148,7 +157,7 @@ const getOrderById = async (req, res) =>
                  select: "name price image description"
              });
         if (!order) {
-            return res.status(404).json({ message: "Order not found" });
+            return res.status(204).json({ message: "Order not found" });
         }
 
     res.status(200).json({ success: true, order});
@@ -170,7 +179,7 @@ const updateOrderStatus = async (req, res) => {
             { new: true }
         );
 
-        if (!order) return res.status(404).json({ message: "Order not found" });
+        if (!order) return res.status(204).json({ message: "Order not found" });
 
         res.status(200).json({ success: true, data: order });
     } catch (error) {
