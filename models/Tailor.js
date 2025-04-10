@@ -10,6 +10,11 @@ const TailorSchema = new mongoose.Schema({
     unique: true, 
   },
 
+  rating:
+  {
+    type:Number,
+    default:0
+  },
   acceptedOrders: 
   [
     {
