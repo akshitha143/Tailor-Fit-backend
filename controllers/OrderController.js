@@ -153,6 +153,7 @@ const getAllOrders = async (req, res) =>
         const orders = await Order.find({ userId })
             .limit(Number(limit))
             .skip((Number(page) - 1) * Number(limit))
+            .populate("items.productId","name image description price");
 
         console.log(orders);
 
