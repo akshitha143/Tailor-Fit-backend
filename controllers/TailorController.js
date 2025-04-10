@@ -257,36 +257,39 @@ const getOrderSummary = async (req, res) => {
 
 const tailorsInfo = async (req, res) => {
   try {
-    const tailors = await User.find({ usertype: "tailor" }).select("_id email profile.name profile.phoneNumber profile.photo");
+    
+    const topTailors = await Tailor.find({ rating: { $gt: 4 } }).select("tailorId rating");
 
-    if (!tailors.length) 
-    {
-      return res.status(204).json({ message: "No tailors found" });
+    if (!topTailors.length) {
+      return res.status(204).json({ message: "No tailors found with rating above 4" });
     }
 
+
     const tailorData = await Promise.all(
-      tailors.map(async (tailor) => {
-        const tailorOrders = await Tailor.findOne({ tailorId: tailor._id }).select("acceptedOrders");
+      topTailors.map(async (tailor) => {
+        const user = await User.findById(tailor.tailorId).select("_id email profile.name profile.phoneNumber profile.photo");
 
-        return{
-          tailorId: tailor._id,
-          name: tailor.profile.name,
-          email: tailor.email,
-          phoneNumber: tailor.profile.phoneNumber,
-          profile:tailor.profile.photo,
-    
+        if (!user) return null;
 
+        return {
+          tailorId: user._id,
+          name: user.profile.name,
+          email: user.email,
+          phoneNumber: user.profile.phoneNumber,
+          profile: user.profile.photo,
+          rating: tailor.rating
         };
       })
     );
 
-    return res.status(200).json({ tailors: tailorData });
-  } 
-  catch (error) 
-  {
+    const filteredTailors = tailorData.filter(t => t !== null);
+
+    return res.status(200).json({ tailors: filteredTailors });
+  } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 module.exports={showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,markAsCompleted , getOrderSummary,tailorsInfo};

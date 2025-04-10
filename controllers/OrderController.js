@@ -60,6 +60,7 @@ const placeOrder = async (req, res) =>
 
 const pendingOrders = async (req, res) => {
     try {
+
         const userId = req.user.userId;
         console.log(userId);
 
