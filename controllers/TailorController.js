@@ -1,7 +1,7 @@
 const Tailor = require("../models/Tailor");
 const Order = require("../models/Order");
 const mongoose = require("mongoose");
-
+const User=require("../models/User");
 const showAllOrders = async (req, res) => {
   try {
     const tailorId = req.params.tailorId;
@@ -255,5 +255,38 @@ const getOrderSummary = async (req, res) => {
 };
 
 
+const tailorsInfo = async (req, res) => {
+  try {
+    const tailors = await User.find({ usertype: "tailor" }).select("_id email profile.name profile.phoneNumber profile.photo");
 
-module.exports={showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,markAsCompleted , getOrderSummary};
+    if (!tailors.length) 
+    {
+      return res.status(204).json({ message: "No tailors found" });
+    }
+
+    const tailorData = await Promise.all(
+      tailors.map(async (tailor) => {
+        const tailorOrders = await Tailor.findOne({ tailorId: tailor._id }).select("acceptedOrders");
+
+        return{
+          tailorId: tailor._id,
+          name: tailor.profile.name,
+          email: tailor.email,
+          phoneNumber: tailor.profile.phoneNumber,
+          profile:tailor.profile.photo,
+          acceptedOrders:tailorOrders.acceptedOrders
+
+        };
+      })
+    );
+
+    return res.status(200).json({ tailors: tailorData });
+  } 
+  catch (error) 
+  {
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+module.exports={showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,markAsCompleted , getOrderSummary,tailorsInfo};

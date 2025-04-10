@@ -11,7 +11,7 @@ router.post('/create-profile', authMiddleware, createProfile);
 router.post('/login', loginUser);
 
 router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', authMiddleware, resetPassword);
+router.post('/reset-password',resetPassword);
 
 
-module.exports = router;
+module.exports = router; 

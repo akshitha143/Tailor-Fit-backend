@@ -168,8 +168,7 @@ const forgotPassword = async (req, res) =>
 };
 
 const resetPassword = async (req, res) => {
-    const { otp, newPassword } = req.body;
-    const email = req.user.email;
+    const { otp, newPassword,email } = req.body;
 
     try {
         const user = await User.findOne({ email });

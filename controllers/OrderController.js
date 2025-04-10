@@ -44,10 +44,10 @@ const placeOrder = async (req, res) =>
         
         res.status(200).json({
             orderId: order._id,
-            order,
-            success: true,
+            // order,
+            // success: true,
             message: "Please confirm to proceed with payment.",
-            amount: totalAmount,
+           //amount: totalAmount,
             
         });
 
@@ -58,6 +58,28 @@ const placeOrder = async (req, res) =>
     }
 };
 
+const pendingOrders=async(req,res)=>
+{
+    try 
+    {
+        const userId=req.user.userId;
+        if(!userId) return res.status(400).json({message:"userId is required"});
+
+        const orders = await Order.find({ userId, accepted: "null" });
+
+        if (!orders || orders.length === 0) 
+        {
+            return res.status(204).json({ message: "No pending orders found" });
+        }
+
+        res.status(200).json({ success: true, orders });
+    } 
+    catch (error) 
+    {
+        console.error("Error fetching pending orders:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
 
 const confirmAndPayOrder = async (req, res) => {
     try 
@@ -203,6 +225,7 @@ const deleteOrder = async (req, res) => {
 module.exports = 
 {
     placeOrder,
+    pendingOrders,
     confirmAndPayOrder,
     getAllOrders,
     getOrderById,

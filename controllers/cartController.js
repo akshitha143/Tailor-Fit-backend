@@ -68,7 +68,9 @@ const addToCart = async (req, res) => {
   
       await cart.save();
       res.status(200).json({ message: "Item added to cart", cart });
-    } catch (error) {
+    }
+     catch (error) 
+    {
       console.error("Add to cart error:", error);
       res.status(500).json({ error });
     }
@@ -167,4 +169,47 @@ const getCart = async (req,res) => {
 };
 
 
-module.exports = { addToCart, removeFromCart, clearCart, getCart };
+const adjustQuantity = async (req, res) => 
+{
+  try {
+    const userId = req.user.userId;
+    const productId = req.params.productId;
+    const { action } = req.body;
+
+    if (!["increment", "decrement"].includes(action)) 
+    {
+      return res.status(400).json({ message: "Action must be increment or decrement" });
+    }
+
+    const cart = await Cart.findOne({ userId });
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
+
+    const item = cart.items.find(item => item.productId.toString() === productId.toString());
+
+    if (!item) {
+      return res.status(404).json({ message: "Product not found in cart" });
+    }
+
+    if (action === "increment") 
+    {
+      item.quantity += 1;
+    }
+     else if (action === "decrement") {
+      item.quantity = Math.max(1, item.quantity - 1);
+    }
+
+
+    cart.totalPrice = cart.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+
+    await cart.save();
+    return res.status(200).json({ message: "Quantity adjusted", cart });
+
+  } 
+  
+  catch (error) {
+    console.error("Adjust quantity error:", error.message);
+    return res.status(500).json({ error: "Something went wrong" });
+  }
+};
+
+module.exports = { addToCart, removeFromCart, clearCart, getCart,adjustQuantity};
