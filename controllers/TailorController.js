@@ -274,7 +274,7 @@ const tailorsInfo = async (req, res) => {
           email: tailor.email,
           phoneNumber: tailor.profile.phoneNumber,
           profile:tailor.profile.photo,
-          acceptedOrders:tailorOrders.acceptedOrders
+    
 
         };
       })
