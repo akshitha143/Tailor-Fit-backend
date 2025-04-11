@@ -25,7 +25,6 @@
     "razorpay": "^2.9.6"
   },
   "main": "app.js",
-  "devDependencies": {},
   "keywords": [],
   "author": "",
   "license": "ISC",
