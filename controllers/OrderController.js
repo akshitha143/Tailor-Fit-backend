@@ -72,7 +72,7 @@ const pendingOrders = async (req, res) => {
             .populate("items.productId","name description image price");
 
         if (!orders || orders.length === 0) {
-            return res.status(204).json({ message: "No pending orders found" });
+            return res.status(204).json({ message: "No pending orders found" ,  });
         }
 
         res.status(200).json({ success: true, orders });
