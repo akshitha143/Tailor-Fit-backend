@@ -5,26 +5,31 @@ const Product=require('../models/productModel');
 //add product
 const createProduct = async (req, res) => {
     try {
-        //console.log("Received Data:", req.body);  
+        const { name, description, size, price, stock, category, image, gender } = req.body;
 
-        const { name, description, size, price, stock, category, image , gender } = req.body;
-
+        // Check for required fields
         if (!name || !price || !stock || !category || !image || !description || !size || !gender) {
-            return res.status(400).json({ message: "All fields are required: name, description, size, price, stock, category, image,gender" });
+            return res.status(400).json({ message: "All fields are required: name, description, size, price, stock, category, image, gender" });
         }
 
-        if (!["S", "M", "L", "XL", "XXL", "XXXL"].includes(size)) {
-            return res.status(400).json({ error: "Invalid size. Allowed values: S, M, L, XL, XXL, XXXL." });
+        // Validate size array
+        const allowedSizes = ["S", "M", "L", "XL", "XXL", "XXXL"];
+        if (!Array.isArray(size) || size.length === 0 || !size.every(s => allowedSizes.includes(s))) {
+            return res.status(400).json({ error: "Invalid sizes. Allowed values: S, M, L, XL, XXL, XXXL." });
         }
-        if(!["male","female"].includes(gender)){
-            return res.status(400).json({ error: "Invalid gender. Allowed values: male, female." });}
+
+        // Validate gender
+        if (!["male", "female"].includes(gender)) {
+            return res.status(400).json({ error: "Invalid gender. Allowed values: male, female." });
+        }
 
         const product = new Product(req.body);
         await product.save();
+
         res.status(201).json({ success: true, data: product });
 
     } catch (error) {
-        console.error("Error:", error.message); 
+        console.error("Error:", error.message);
         res.status(500).json({ error: error.message });
     }
 };

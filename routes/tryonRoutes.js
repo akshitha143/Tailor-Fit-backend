@@ -1,7 +1,7 @@
 const express=require('express');
 const router=express.Router();
 const {getAllclothes, upload }=require('../controllers/tryoncontrollers');
-const User = require("../models/user");
+const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
 
 
@@ -43,5 +43,5 @@ router.post("/upload/gltf", authMiddleware, upload.single("gltfFile"), async (re
 });
 
 
-router.get('/getallclothes',getAllclothes);
+router.get('/getallclothes',authMiddleware,getAllclothes);
 module.exports=router;

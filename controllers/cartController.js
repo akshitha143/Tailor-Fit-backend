@@ -7,12 +7,14 @@ const addToCart = async (req, res) => {
     try 
     {
       const userId= req.user.userId;
+      
       //const userId = "67f0e33ec34207c80c80f63a";
     
       const productId = req.params.productId; 
-      console.log(productId);
+      // console.log(productId);
       
-      const { quantity, tailorId } = req.body;
+      const { quantity, tailorId ,size} = req.body;
+      console.log(req.body);
   
       // Validate request body values
       if (typeof quantity !== "number" || quantity <= 0) 
@@ -22,6 +24,10 @@ const addToCart = async (req, res) => {
       if (!tailorId)  
       {
         return res.status(400).json({ message: "Invalid or missing tailorId" });
+      }
+
+      if (!size || typeof size !== "string") {
+        return res.status(400).json({ message: "Invalid or missing size" });
       }
   
       let product;
@@ -40,7 +46,7 @@ const addToCart = async (req, res) => {
       if (!cart) {
         cart = new Cart({ userId, items: [], totalPrice: 0 });
       }
-      console.log(cart);
+      // console.log(cart);
   
       const itemIndex = cart.items.findIndex((item) =>
         item.productId.toString() === productId.toString()
@@ -54,6 +60,7 @@ const addToCart = async (req, res) => {
           quantity,
           price: product.price,
           tailorId,
+          size
         });
       }
   
@@ -134,8 +141,7 @@ const clearCart = async (userId) => {
 
 const getCart = async (req,res) => {
   try {
-    const { userId } = req.params;
-    
+    const userId=req.user.userId;
     const cart = await Cart.findOne({ userId });
     if (!cart || cart.items.length === 0) 
     {
@@ -146,18 +152,22 @@ const getCart = async (req,res) => {
     const productIds = cart.items.map(item => item.productId);
     
     
-    const products = await Product.find({ _id: { $in: productIds } }).select("name");
+    const products = await Product.find({ _id: { $in: productIds } }).select("name image");
     
     
     const productMap = {};
     products.forEach(product => {
-      productMap[product._id.toString()] = product.name;
+      productMap[product._id.toString()] = {
+        name: product.name,
+        image: product.image
+      };
     });
     
     
     const itemsWithName = cart.items.map(item => ({
       ...item.toObject(),
-      name: productMap[item.productId.toString()] || "Unknown Product"
+      name: productMap[item.productId.toString()]?.name || "Unknown Product",
+      image: productMap[item.productId.toString()]?.image || null
     }));
     
     // Return the cart with updated items array including product names
