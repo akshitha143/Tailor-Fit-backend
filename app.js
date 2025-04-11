@@ -15,6 +15,7 @@ const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");;
 const tryonRoutes = require("./routes/tryonRoutes"); 
 const TailorRoutes=require("./routes/TailorRoutes");
+const measurementRoutes = require("./routes/measurementsRoutes");
 var cors = require("cors");
 
 var app = express();
@@ -34,6 +35,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 // Routes
+app.use("/api/measurements", measurementRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/auth", authroutes);
 app.use('/api/products', productRoutes);
@@ -62,7 +64,7 @@ app.use(function(err, req, res, next) {
 });
 
 
-const PORT  =   8000;
+const PORT  =   3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
