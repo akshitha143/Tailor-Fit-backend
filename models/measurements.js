@@ -22,7 +22,9 @@ const MeasurementSchema = new mongoose.Schema({
   hip: { type: MeasurementDetailSchema, required: true },
   thigh: { type: MeasurementDetailSchema, required: true },
   knee: { type: MeasurementDetailSchema, required: true },
-  ankle: { type: MeasurementDetailSchema, required: true }
+  ankle: { type: MeasurementDetailSchema, required: true },
+  shirtSize: { type: String },
+  pantSize: { type: String }
 });
 
 module.exports = mongoose.model('Measurement', MeasurementSchema);
