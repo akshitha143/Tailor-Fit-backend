@@ -60,22 +60,29 @@ const placeOrder = async (req, res) =>
 
 const pendingOrders = async (req, res) => {
     try {
-      const userId = req.user.userId;
-      if (!userId) return res.status(400).json({ message: "userId is required" });
-  
-      const orders = await Order.find({ userId, accepted: null }); 
-  
-      if (!orders || orders.length === 0) {
-        return res.status(204).json({ message: "No pending orders found" });
-      }
-  
-      res.status(200).json({ success: true, orders });
+
+        const userId = req.user.userId;
+        console.log(userId);
+
+        if (!userId) {
+            return res.status(400).json({ message: "userId is required" });
+        }
+
+        const orders = await Order.find({ userId, "items.accepted": "null" })
+            .populate("items.productId","name description image price");
+
+        if (!orders || orders.length === 0) {
+            return res.status(204).json({ message: "No pending orders found" });
+        }
+
+        res.status(200).json({ success: true, orders });
     } catch (error) {
-      console.error("Error fetching pending orders:", error.message);
-      res.status(500).json({ message: "Internal Server Error" });
+        console.error("Error fetching pending orders:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-  };
-  
+};
+
+
 const confirmAndPayOrder = async (req, res) => {
     try 
     {
@@ -125,8 +132,8 @@ const confirmAndPayOrder = async (req, res) => {
 const getAllOrders = async (req, res) => 
 {
     try {
-        // const userId = req.user.userId;
-        const userId = "67f0e33ec34207c80c80f63a";
+        const userId = req.user.userId;
+        //const userId = "67f0e33ec34207c80c80f63a";
         const { page = 1, limit = 5 } = req.query;
 
         const totalOrders = await Order.countDocuments({ userId });
@@ -146,6 +153,7 @@ const getAllOrders = async (req, res) =>
         const orders = await Order.find({ userId })
             .limit(Number(limit))
             .skip((Number(page) - 1) * Number(limit))
+            .populate("items.productId","name image description price");
 
         console.log(orders);
 
