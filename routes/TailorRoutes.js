@@ -1,19 +1,22 @@
 const express = require("express");
 const router = express.Router();
 
-const {showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,totalOrders,completedOrders,pendingOrders,markAsCompleted , getOrderSummary} =require("../controllers/TailorController");
+const {showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,tailorsInfo,tailorsInfobyId ,pendingOrders,markAsCompleted , getOrderSummary} =require("../controllers/TailorController");
 
-router.get("/getallorders/:tailorId", showAllOrders);
+router.get("/getallorders/:tailorId/:userId", showAllOrders);
 
-router.put('/accept-order/:orderId/:tailorId', OrderAccept); 
-router.put("/reject-order/:orderId/:tailorId", OrderReject);
+router.put('/accept-order', OrderAccept); 
+router.put("/reject-order", OrderReject);
 
-router.get("/accepted-orders/:orderId/:tailorId", getAcceptedOrders);
+router.get("/accepted-orders/:tailorId", getAcceptedOrders);
 router.get("/order-summary/:tailorId", getOrderSummary);
+router.get("/tailors-info/", tailorsInfo);
+
 // router.get("/total-orders/:tailorId", totalOrders);
 // router.get("/completed-orders/:tailorId", completedOrders);
 // router.get("/pending-orders/:tailorId", pendingOrders);
 
-router.get("/mark-as-completed/:orderId", markAsCompleted);
+router.post("/mark-as-completed", markAsCompleted);
+router.get('/tailors-info/:tailorId', tailorsInfobyId);
 
 module.exports = router;
