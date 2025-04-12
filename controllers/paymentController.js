@@ -4,69 +4,72 @@ const Order=require('../models/Order');
 
 
 const createPayment = async (userId, orderId) => {
-    try 
-    {
-        if (!orderId) 
-        {
-            return { status: 400, success: false, message: "Order ID is required" };
-        }
-
-        const order = await Order.findById(orderId);
-        if (!order) 
-        {
-            return { status: 204, success: false, message: "Order not found" };
-        }
-
-        const acceptedItems = order.items.filter(item => item.accepted === "true");
-
-        if (acceptedItems.length === 0) 
-        {
-            return {
-                status: 204,
-                success: false,
-                message: "No items accepted by tailors"
-            };
-        }
-
-        const amount = order.totalAmount;
-        await order.save(); 
-
-        const options = {
-            amount: amount * 100,
-            currency: "INR",
-            receipt: `receipt_${orderId}`,
-            notes: { userId, orderId }
-        };
-
-        const razorpayOrder = await razorpay.orders.create(options);
-
-        const payment = new Payment({
-            userId,
-            orderId,
-            razorpayOrderId: razorpayOrder.id,
-            amount,
-            status: "pending"
-        });
-
-        await payment.save();
-
+    try {
+      if (!orderId) {
+        return { status: 400, success: false, message: "Order ID is required" };
+      }
+  
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return { status: 204, success: false, message: "Order not found" };
+      }
+  
+      const acceptedItems = order.items.filter(item => item.accepted === "true");
+  
+      if (acceptedItems.length === 0) {
         return {
-            status: 201,
-            success: true,
-            message: "Payment created successfully",
-            razorpayOrder
+          status: 204,
+          success: false,
+          message: "No items accepted by tailors"
         };
-
-    } catch (error) {
-        console.error("Payment creation failed:", error.message);
+      }
+  
+      
+      const acceptedItemsTotal = acceptedItems.reduce((total, item) => {
+        return total + (item.price * item.quantity); 
+      }, 0);
+  
+      if (acceptedItemsTotal === 0) {
         return {
-            status: 500,
-            success: false,
-            message: "Internal Server Error",
-            error: error.message
+          status: 400,
+          success: false,
+          message: "Total amount for accepted items is zero"
         };
+      }
+  
+      const options = {
+        amount: acceptedItemsTotal * 100, 
+        currency: "INR",
+        receipt: `receipt_${orderId}`,
+        notes: { userId, orderId }
+      };
+  
+      const razorpayOrder = await razorpay.orders.create(options);
+  
+      const payment = new Payment({
+        userId,
+        orderId,
+        razorpayOrderId: razorpayOrder.id,
+        amount: acceptedItemsTotal,
+        status: "Pending"
+      });
+  
+      await payment.save();
+  
+      return {
+        status: 201,
+        success: true,
+        message: "Payment created successfully",
+        razorpayOrder
+      };
+  
+    } 
+    
+    catch (error) {
+      console.error("Payment creation failed:", error.message);
     }
-};
+  };
+  
 
 
 const verifyPayment = async(req, res) => 
@@ -97,12 +100,12 @@ const verifyPayment = async(req, res) =>
                 return res.status(404).json({ message: "Order not found" });
             }
 
-            order.status="pending";
+            order.status="Pending";
             await order.save();
-            // Update payment status
+           
             const payment = await Payment.findOneAndUpdate(
                 { razorpayOrderId: order_id },
-                { razorpayPaymentId: payment_id, status: "completed", amount },
+                { razorpayPaymentId: payment_id, status: "Completed", amount },
                 { new: true }
             );
 
@@ -113,7 +116,7 @@ const verifyPayment = async(req, res) =>
                 // {
                 //     status: "paid"
                 // });
-                order.payment_status="paid";
+                order.payment_status="Paid";
                 order.save();
                 console.log("Payment Successful, Order Updated:", payment_id);
             }

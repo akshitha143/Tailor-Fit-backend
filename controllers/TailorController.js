@@ -10,24 +10,24 @@ const showAllOrders = async (req, res) => {
     if (!tailorId || !userId) {
       return res.status(400).json({ message: "Tailor ID and User ID are required" });
     }
-    //console.log(tailorId, userId);
+
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    // Find all orders of this user that contain this tailor's products
     const orders = await Order.find({
       userId: userObjectId,
       "items.tailorId": tailorObjectId
     }).populate("items.productId");
 
-    //console.log(orders);
     if (!orders.length) {
       return res.status(204).json({ message: "No orders found for this tailor and user" });
     }
 
     const allProducts = orders.flatMap(order =>
       order.items
-        .filter(item => item.tailorId.equals(tailorObjectId))
+        .filter(item => 
+          item.tailorId.equals(tailorObjectId) && item.accepted === "null"
+        )
         .map(item => ({
           orderId: order._id,
           product: item.productId,
@@ -35,7 +35,7 @@ const showAllOrders = async (req, res) => {
         }))
     );
 
-    res.status(200).json({ userId:userId,products: allProducts });
+    res.status(200).json({ userId: userId, products: allProducts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -89,10 +89,10 @@ const getAcceptedOrders = async (req, res) => {
 const OrderAccept = async (req, res) => {
   try {
     const { orderId, tailorId, productId, userId } = req.body;
-    console.log(orderId);
-    console.log(tailorId);
-    console.log(productId);
-    console.log(userId);
+    // console.log(orderId);
+    // console.log(tailorId);
+    // console.log(productId);
+    // console.log(userId);
     if (!orderId || !tailorId || !productId || !userId) {
       return res.status(400).json({ message: "Order ID, Tailor ID, Product ID, and User ID are required" });
     }
@@ -109,7 +109,8 @@ const OrderAccept = async (req, res) => {
       "items.tailorId": tailorObjectId,
     });
 
-    if (!order) {
+    if (!order) 
+    {
       return res.status(404).json({ message: "Order not found for this user and tailor" });
     }
 
@@ -228,54 +229,58 @@ const markAsCompleted = async (req, res) => {
   try {
     const { userId, tailorId, productId } = req.body;
 
-    // Convert to ObjectId
+   
     const user = new mongoose.Types.ObjectId(userId);
     const tailor = new mongoose.Types.ObjectId(tailorId);
     const product = new mongoose.Types.ObjectId(productId);
 
-    // Find the order with matching item
+   
     const order = await Order.findOne({
       userId: user,
       items: {
         $elemMatch: {
           productId: product,
           tailorId: tailor,
-          status: "Processing"
+          status: "processing",// after payment implementation change into pending for checking purpose only i use Processing
+          accepted: "true"
         }
       }
     });
 
     if (!order) {
-      return res.status(404).json({ message: "No matching processing orders found" });
+      return res.status(404).json({ message: "No matching processing order found" });
     }
 
-    // Update the status of the matched item
-    let itemUpdated = false;
-    order.items = order.items.map(item => {
+    let updatedItem = null;
+
+   
+    order.items.forEach(item => {
       if (
         item.productId.equals(product) &&
         item.tailorId.equals(tailor) &&
-        item.status === "Processing"
+        item.status === "Processing" &&
+        item.accepted === "true"
       ) {
         item.status = "Completed";
-        itemUpdated = true;
+        updatedItem = item; 
       }
-      return item;
     });
 
-    if (!itemUpdated) {
+    if (!updatedItem) {
       return res.status(400).json({ message: "Item status not updated" });
     }
 
-    // Save the updated order
+    
     await order.save();
 
-    res.status(200).json({ message: "Order marked as completed", order });
+    
+    res.status(200).json({ message: "Product marked as completed", updatedItem });
   } catch (error) {
     console.error("Error updating order:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-} ;
+};
+
 
 
 
@@ -302,9 +307,9 @@ const getOrderSummary = async (req, res) => {
       order.items.forEach(item => {
         if (item.tailorId.equals(tailorObjectId) && item.accepted === "true") {
           totalOrdersCount++;
-          if (item.status === "completed") {
+          if (item.status === "Completed") {
             completedOrdersCount++;
-          } else if (item.status === "pending") {
+          } else if (item.status === "Pending") {
             pendingOrdersCount++;
           }
         }

@@ -60,7 +60,6 @@ const placeOrder = async (req, res) =>
 
 const pendingOrders = async (req, res) => {
     try {
-
         const userId = req.user.userId;
         console.log(userId);
 
@@ -68,14 +67,35 @@ const pendingOrders = async (req, res) => {
             return res.status(400).json({ message: "userId is required" });
         }
 
-        const orders = await Order.find({ userId, "items.accepted": "null" })
-            .populate("items.productId","name description image price");
+        const orders = await Order.find({ userId })
+            .populate("items.productId", "name description image price");
 
         if (!orders || orders.length === 0) {
-            return res.status(204).json({ message: "No pending orders found" ,  });
+            return res.status(204).json({ message: "No pending orders found" });
         }
 
-        res.status(200).json({ success: true, orders });
+        
+        const pendingItems = [];
+
+        orders.forEach(order => {
+            order.items.forEach(item => {
+                if (item.accepted === "null") {
+                    pendingItems.push({
+                        orderId: order._id,
+                        product: item.productId,
+                        quantity: item.quantity,
+                        tailorId: item.tailorId,
+                        accepted: item.accepted
+                    });
+                }
+            });
+        });
+
+        if (pendingItems.length === 0) {
+            return res.status(204).json({ message: "No pending items found" });
+        }
+
+        res.status(200).json({ success: true, pendingItems });
     } catch (error) {
         console.error("Error fetching pending orders:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
@@ -83,47 +103,39 @@ const pendingOrders = async (req, res) => {
 };
 
 
+//check this once i am not done yet...because of payment controller not in function
 const confirmAndPayOrder = async (req, res) => {
-    try 
-    {
+    try {
         const orderId = req.params.orderId;
-        const userId=req.user.userId;
+        const userId = req.user.userId;
 
-        //const token = req.headers.authorization;
+       
+        const paymentResponse = await createPayment(orderId, userId);
+        const { success, error } = paymentResponse;
+
         
-        // const paymentResponse = await axios.post(
-        //     `http://localhost:8000/api/payment/create/${orderId}`,
-        //     {}, 
-        //     { headers: { Authorization: token } }
-        // );
-
-        const paymentResponse=await createPayment(orderId,userId);
-        const { status, error } = paymentResponse.data;
-
-        if (status !== "completed") 
-        {
-            return res.status(400).json({ 
+        if (!success) {
+            return res.status(400).json({
                 message: "Payment failed. Order not confirmed.",
                 reason: error || "Unknown error"
             });
         }
 
         
-        // await axios.delete(
-        //     `http://localhost:8000/api/cart/clear/${userId}`,
-        //     { headers: { Authorization: token } }
-        // );
-
         await clearCart(userId);
 
+       
         res.status(200).json({
             success: true,
-            message: "Order confirmed and payment successful"
+            message: "Order confirmed and payment successful",
+           
         });
 
     } 
-    catch (error) {
-       console.error(error.message); 
+    
+    catch (error) 
+    {
+        console.error(error.message);
         res.status(500).json({ error: error.message });
     }
 };
@@ -225,6 +237,34 @@ const deleteOrder = async (req, res) => {
 };
 
 
+const deleteProductFromOrder = async (req, res) => {
+    try {
+        const { orderId, productId } = req.body;
+
+        
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        
+        const initialLength = order.items.length;
+        order.items = order.items.filter(item => item.productId.toString() !== productId);
+
+      
+        if (order.items.length === initialLength) {
+            return res.status(404).json({ message: "Product not found in the order" });
+        }
+
+      
+        await order.save();
+
+        res.status(200).json({ success: true, message: "Product removed from order successfully" });
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ error: "Something went wrong while removing the product from the order" });
+    }
+};
+
+
 module.exports = 
 {
     placeOrder,
@@ -233,5 +273,6 @@ module.exports =
     getAllOrders,
     getOrderById,
     updateOrderStatus,
-    deleteOrder
+    deleteOrder,
+    deleteProductFromOrder
 };
