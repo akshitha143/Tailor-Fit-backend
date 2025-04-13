@@ -22,8 +22,6 @@ const showAllOrders = async (req, res) => {
       return res.status(204).json({ message: "No orders found for this tailor" });
     }
 
-    // Flatten the orders array and extract only items with the matching tailorId and accepted status "null"
-    // Also include the userId from each order in the response.
     const allProducts = orders.flatMap(order =>
       order.items
         .filter(item =>
@@ -42,6 +40,7 @@ const showAllOrders = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
