@@ -5,37 +5,39 @@ const User=require("../models/User");
 
 const showAllOrders = async (req, res) => {
   try {
-    const { tailorId, userId } = req.params;
+    const { tailorId } = req.params;
 
-    if (!tailorId || !userId) {
-      return res.status(400).json({ message: "Tailor ID and User ID are required" });
+    if (!tailorId) {
+      return res.status(400).json({ message: "Tailor ID is required" });
     }
 
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
-    const userObjectId = new mongoose.Types.ObjectId(userId);
 
+    // Find orders for the specified tailor across all users.
     const orders = await Order.find({
-      userId: userObjectId,
       "items.tailorId": tailorObjectId
     }).populate("items.productId");
 
     if (!orders.length) {
-      return res.status(204).json({ message: "No orders found for this tailor and user" });
+      return res.status(204).json({ message: "No orders found for this tailor" });
     }
 
+    // Flatten the orders array and extract only items with the matching tailorId and accepted status "null"
+    // Also include the userId from each order in the response.
     const allProducts = orders.flatMap(order =>
       order.items
-        .filter(item => 
+        .filter(item =>
           item.tailorId.equals(tailorObjectId) && item.accepted === "null"
         )
         .map(item => ({
           orderId: order._id,
+          userId: order.userId,   // Adding userId from the order
           product: item.productId,
           accepted: item.accepted
         }))
     );
 
-    res.status(200).json({ userId: userId, products: allProducts });
+    res.status(200).json({ tailorId: tailorId, products: allProducts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -46,7 +48,8 @@ const showAllOrders = async (req, res) => {
 const getAcceptedOrders = async (req, res) => {
   try {
     const tailorId = req.params.tailorId;
-    if (!tailorId) return res.status(400).json({ message: "Tailor ID is required" });
+    if (!tailorId)
+      return res.status(400).json({ message: "Tailor ID is required" });
 
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
 
@@ -54,31 +57,40 @@ const getAcceptedOrders = async (req, res) => {
       items: {
         $elemMatch: {
           tailorId: tailorObjectId,
-          accepted: "true"
-        }
-      }
-    }).populate('items.productId');
+          accepted: "true",
+          status: "Processing",
+        },
+      },
+    }).populate("items.productId");
 
-    if (!orders.length) return res.status(204).json({ message: "No orders found" });
+    if (!orders.length)
+      return res.status(204).json({ message: "No orders found" });
 
-    // Collect product info with userId
-    const products = orders.flatMap(order =>
+    // Collect product info with userId and status
+    const products = orders.flatMap((order) =>
       order.items
-        .filter(item => item.tailorId.equals(tailorObjectId) && item.accepted === "true")
-        .map(item => ({
+        .filter(
+          (item) =>
+            item.tailorId.equals(tailorObjectId) &&
+            item.accepted === "true" &&
+            item.status === "Processing"
+        )
+        .map((item) => ({
           ...item.productId._doc,
-          userId: order.userId,  
+          userId: order.userId,
+          status: item.status, // include the status field
         }))
     );
 
     // Deduplicate based on productId
     const uniqueProductsMap = new Map();
-    products.forEach(product => {
+    products.forEach((product) => {
       uniqueProductsMap.set(product._id.toString(), product);
     });
     const uniqueProducts = Array.from(uniqueProductsMap.values());
 
-    res.status(200).json({ products: uniqueProducts });
+    // Return the response with an additional "status" field in the JSON body.
+    res.status(200).json({ status: "success", products: uniqueProducts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -241,7 +253,7 @@ const markAsCompleted = async (req, res) => {
         $elemMatch: {
           productId: product,
           tailorId: tailor,
-          status: "processing",// after payment implementation change into pending for checking purpose only i use Processing
+          status: "Processing",// after payment implementation change into pending for checking purpose only i use Processing
           accepted: "true"
         }
       }

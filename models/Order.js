@@ -71,7 +71,7 @@ const OrderSchema = new mongoose.Schema(
     {
       type:String,
       enum:["Paid","Unpaid"],
-      default:"unpaid"
+      default:"Unpaid"
     }
 
   },

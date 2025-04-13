@@ -145,7 +145,6 @@ const getAllOrders = async (req, res) =>
 {
     try {
         const userId = req.user.userId;
-        //const userId = "67f0e33ec34207c80c80f63a";
         const { page = 1, limit = 5 } = req.query;
 
         const totalOrders = await Order.countDocuments({ userId });
