@@ -3,7 +3,7 @@ const router = express.Router();
 
 const {showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,tailorsInfo,tailorsInfobyId ,pendingOrders,markAsCompleted , getOrderSummary} =require("../controllers/TailorController");
 
-router.get("/getallorders/:tailorId", showAllOrders);
+router.get("/getallorders/:tailorId/:userId", showAllOrders);
 
 router.put('/accept-order', OrderAccept); 
 router.put("/reject-order", OrderReject);
