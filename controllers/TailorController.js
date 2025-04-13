@@ -5,27 +5,27 @@ const User=require("../models/User");
 
 const showAllOrders = async (req, res) => {
   try {
-    const { tailorId, userId } = req.params;
+    const { tailorId } = req.params;
 
-    if (!tailorId || !userId) {
-      return res.status(400).json({ message: "Tailor ID and User ID are required" });
+    if (!tailorId) {
+      return res.status(400).json({ message: "Tailor ID is required" });
     }
 
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
-    const userObjectId = new mongoose.Types.ObjectId(userId);
 
+    // Find orders for the specified tailor across all users.
     const orders = await Order.find({
-      userId: userObjectId,
       "items.tailorId": tailorObjectId
     }).populate("items.productId");
 
     if (!orders.length) {
-      return res.status(204).json({ message: "No orders found for this tailor and user" });
+      return res.status(204).json({ message: "No orders found for this tailor" });
     }
 
+    // Flatten the orders array and extract only items with the matching tailorId and accepted status "null"
     const allProducts = orders.flatMap(order =>
       order.items
-        .filter(item => 
+        .filter(item =>
           item.tailorId.equals(tailorObjectId) && item.accepted === "null"
         )
         .map(item => ({
@@ -35,11 +35,12 @@ const showAllOrders = async (req, res) => {
         }))
     );
 
-    res.status(200).json({ userId: userId, products: allProducts });
+    res.status(200).json({ tailorId: tailorId, products: allProducts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
