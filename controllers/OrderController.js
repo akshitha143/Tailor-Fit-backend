@@ -41,6 +41,11 @@ const placeOrder = async (req, res) =>
         });
 
         await order.save(); 
+
+        await clearCart(userId);
+        await cart.save();
+
+        
         
         res.status(200).json({
             orderId: order._id,
@@ -53,7 +58,8 @@ const placeOrder = async (req, res) =>
 
 
     } 
-    catch (error) {
+    catch (error) 
+    {
         res.status(500).json({ error: error.message });
     }
 };
@@ -88,7 +94,8 @@ const pendingOrders = async (req, res) => {
                         accepted: item.accepted
                     });
                 }
-                if (item.accepted === "true") {
+                if (item.accepted === "true" && order.payment_status === "Unpaid") 
+                {
                     pendingItems.push({
                         orderId: order._id,
                         product: item.productId,
@@ -131,7 +138,6 @@ const confirmAndPayOrder = async (req, res) => {
         }
 
         
-        await clearCart(userId);
 
        
         res.status(200).json({

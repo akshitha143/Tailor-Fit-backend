@@ -13,7 +13,7 @@ const showAllOrders = async (req, res) => {
 
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
 
-    // Find orders for the specified tailor across all users.
+   
     const orders = await Order.find({
       "items.tailorId": tailorObjectId
     }).populate("items.productId");
@@ -29,7 +29,7 @@ const showAllOrders = async (req, res) => {
         )
         .map(item => ({
           orderId: order._id,
-          userId: order.userId,   // Adding userId from the order
+          userId: order.userId,   
           product: item.productId,
           accepted: item.accepted
         }))

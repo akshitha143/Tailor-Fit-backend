@@ -1,29 +1,32 @@
-
-
 const Product=require('../models/productModel');
 
-//add product
 const createProduct = async (req, res) => {
     try {
-        const { name, description, size, price, stock, category, image, gender } = req.body;
+        const { name, description, size, price, stock, category, images, gender } = req.body;
 
-        // Check for required fields
-        if (!name || !price || !stock || !category || !image || !description || !size || !gender) {
-            return res.status(400).json({ message: "All fields are required: name, description, size, price, stock, category, image, gender" });
+       
+        if (!name || !price || !stock || !category || !images || !description || !size || !gender) {
+            return res.status(400).json({ message: "All fields are required: name, description, size, price, stock, category, images (array), gender" });
         }
 
-        // Validate size array
+        
+        if (!Array.isArray(images) || images.length < 2) 
+        {
+            return res.status(400).json({ error: "At least 2 image URLs are required." });
+        }
+
+       
         const allowedSizes = ["S", "M", "L", "XL", "XXL", "XXXL"];
         if (!Array.isArray(size) || size.length === 0 || !size.every(s => allowedSizes.includes(s))) {
             return res.status(400).json({ error: "Invalid sizes. Allowed values: S, M, L, XL, XXL, XXXL." });
         }
 
-        // Validate gender
+        
         if (!["male", "female"].includes(gender)) {
             return res.status(400).json({ error: "Invalid gender. Allowed values: male, female." });
         }
 
-        const product = new Product(req.body);
+        const product = new Product({ name, description, size, price, stock, category, images, gender });
         await product.save();
 
         res.status(201).json({ success: true, data: product });
@@ -35,7 +38,6 @@ const createProduct = async (req, res) => {
 };
 
 
-//getAllProducts
 const getAllProducts=async(req,res) =>
 {
     try
