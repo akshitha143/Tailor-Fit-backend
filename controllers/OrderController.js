@@ -88,6 +88,15 @@ const pendingOrders = async (req, res) => {
                         accepted: item.accepted
                     });
                 }
+                if (item.accepted === "true") {
+                    pendingItems.push({
+                        orderId: order._id,
+                        product: item.productId,
+                        quantity: item.quantity,
+                        tailorId: item.tailorId,
+                        accepted: item.accepted
+                    });
+                }
             });
         });
 

@@ -57,7 +57,7 @@ const getAcceptedOrders = async (req, res) => {
         $elemMatch: {
           tailorId: tailorObjectId,
           accepted: "true",
-          status: "Processing",
+          status: "Pending",
         },
       },
     }).populate("items.productId");
@@ -72,7 +72,7 @@ const getAcceptedOrders = async (req, res) => {
           (item) =>
             item.tailorId.equals(tailorObjectId) &&
             item.accepted === "true" &&
-            item.status === "Processing"
+            item.status === "Pending"
         )
         .map((item) => ({
           ...item.productId._doc,
@@ -252,7 +252,7 @@ const markAsCompleted = async (req, res) => {
         $elemMatch: {
           productId: product,
           tailorId: tailor,
-          status: "Processing",// after payment implementation change into pending for checking purpose only i use Processing
+          status: "Pending",// after payment implementation change into pending for checking purpose only i use Processing
           accepted: "true"
         }
       }
@@ -269,7 +269,7 @@ const markAsCompleted = async (req, res) => {
       if (
         item.productId.equals(product) &&
         item.tailorId.equals(tailor) &&
-        item.status === "Processing" &&
+        item.status === "Pending" &&
         item.accepted === "true"
       ) {
         item.status = "Completed";
