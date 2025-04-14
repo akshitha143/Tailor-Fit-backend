@@ -108,26 +108,19 @@ const removeFromCart = async (req, res) => {
 };
 
 const clearCart = async (userId) => {
-    try 
-    {
-
-      if (!userId) 
-      {
-          return { status: 400, message: "User ID is required" };
-      }
-        
-         //const  userId = req.params.userId;
-       // const userId = "67f0e33ec34207c80c80f63a";
-        await Cart.findOneAndDelete({ userId });
-
-        return { status: 200, message: "Cart cleared successfully" };
-    } 
-    catch (error) 
-    {
-        return { status: 500, error: "Something went wrong" };
+  try {
+    if (!userId) {
+      throw new Error("User ID is required");
     }
-};
 
+    await Cart.findOneAndDelete({ userId });
+
+    return { success: true, message: "Cart cleared successfully" };
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+    return { success: false, error: "Something went wrong" };
+  }
+};
 
 
 const getCart = async (req,res) => {
