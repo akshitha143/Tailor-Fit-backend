@@ -2,48 +2,53 @@ const Tailor = require("../models/Tailor");
 const Order = require("../models/Order");
 const mongoose = require("mongoose");
 const User=require("../models/User");
+
 const showAllOrders = async (req, res) => {
   try {
-    const tailorId = req.params.tailorId;
-    if (!tailorId) return res.status(400).json({ message: "Tailor ID is required" });
+    const { tailorId } = req.params;
+
+    if (!tailorId) {
+      return res.status(400).json({ message: "Tailor ID is required" });
+    }
 
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
 
+    // Find orders for the specified tailor across all users.
     const orders = await Order.find({
-      items: {
-        $elemMatch: {
-          tailorId: tailorObjectId,
-          accepted: "null"
-        }
-      }
-    }).populate('items.productId');
+      "items.tailorId": tailorObjectId
+    }).populate("items.productId");
 
-    if (!orders.length) return res.status(204).json({ message: "No orders found" });
+    if (!orders.length) {
+      return res.status(204).json({ message: "No orders found for this tailor" });
+    }
 
-   
-    const products = orders.flatMap(order =>
+    const allProducts = orders.flatMap(order =>
       order.items
-        .filter(item => item.tailorId.equals(tailorObjectId) && item.accepted === "null")
-        .map(item => item.productId)
+        .filter(item =>
+          item.tailorId.equals(tailorObjectId) && item.accepted === "null"
+        )
+        .map(item => ({
+          orderId: order._id,
+          userId: order.userId,   // Adding userId from the order
+          product: item.productId,
+          accepted: item.accepted
+        }))
     );
 
-    const uniqueProductsMap = new Map();
-    products.forEach(product => {
-      uniqueProductsMap.set(product._id.toString(), product);
-    });
-    const uniqueProducts = Array.from(uniqueProductsMap.values());
-
-    res.status(200).json({ products: uniqueProducts });
+    res.status(200).json({ tailorId: tailorId, products: allProducts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 
+
+
 const getAcceptedOrders = async (req, res) => {
   try {
     const tailorId = req.params.tailorId;
-    if (!tailorId) return res.status(400).json({ message: "Tailor ID is required" });
+    if (!tailorId)
+      return res.status(400).json({ message: "Tailor ID is required" });
 
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
 
@@ -51,54 +56,82 @@ const getAcceptedOrders = async (req, res) => {
       items: {
         $elemMatch: {
           tailorId: tailorObjectId,
-          accepted: "true"
-        }
-      }
-    }).populate('items.productId');
+          accepted: "true",
+          status: "Pending",
+        },
+      },
+    }).populate("items.productId");
 
-    if (!orders.length) return res.status(204).json({ message: "No orders found" });
+    if (!orders.length)
+      return res.status(204).json({ message: "No orders found" });
 
-   
-    const products = orders.flatMap(order =>
+    // Collect product info with userId and status
+    const products = orders.flatMap((order) =>
       order.items
-        .filter(item => item.tailorId.equals(tailorObjectId) && item.accepted === "true")
-        .map(item => item.productId)
+        .filter(
+          (item) =>
+            item.tailorId.equals(tailorObjectId) &&
+            item.accepted === "true" &&
+            item.status === "Pending"
+        )
+        .map((item) => ({
+          ...item.productId._doc,
+          userId: order.userId,
+          status: item.status, // include the status field
+        }))
     );
 
+    // Deduplicate based on productId
     const uniqueProductsMap = new Map();
-    products.forEach(product => {
+    products.forEach((product) => {
       uniqueProductsMap.set(product._id.toString(), product);
     });
     const uniqueProducts = Array.from(uniqueProductsMap.values());
 
-    res.status(200).json({ products: uniqueProducts });
-  }
-   catch (error) {
+    // Return the response with an additional "status" field in the JSON body.
+    res.status(200).json({ status: "success", products: uniqueProducts });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 
+
 const OrderAccept = async (req, res) => {
   try {
-    const { orderId, tailorId } = req.params;
-
-    if (!orderId || !tailorId) 
-    {
-      return res.status(400).json({ message: "Order ID and Tailor ID are required" });
+    const { orderId, tailorId, productId, userId } = req.body;
+    // console.log(orderId);
+    // console.log(tailorId);
+    // console.log(productId);
+    // console.log(userId);
+    if (!orderId || !tailorId || !productId || !userId) {
+      return res.status(400).json({ message: "Order ID, Tailor ID, Product ID, and User ID are required" });
     }
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(204).json({ message: "Order not found" });
-    }
-
+    const orderObjectId = new mongoose.Types.ObjectId(orderId);
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
+    const productObjectId = new mongoose.Types.ObjectId(productId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
     
+    const order = await Order.findOne({
+      _id: orderObjectId,
+      userId: userObjectId,
+      "items.tailorId": tailorObjectId,
+    });
+
+    if (!order) 
+    {
+      return res.status(404).json({ message: "Order not found for this user and tailor" });
+    }
+
     let isUpdated = false;
+
     order.items = order.items.map(item => {
-      if (item.tailorId.equals(tailorObjectId)) {
+      if (
+        item.tailorId.equals(tailorObjectId) &&
+        item.productId.equals(productObjectId)
+      ) {
         item.accepted = "true";
         isUpdated = true;
       }
@@ -106,14 +139,15 @@ const OrderAccept = async (req, res) => {
     });
 
     if (!isUpdated) {
-      return res.status(400).json({ message: "No matching item found for this tailor" });
+      return res.status(400).json({ message: "No matching item found for this tailor and product" });
     }
 
     await order.save();
 
+    
     const tailor = await Tailor.findOne({ tailorId: tailorObjectId });
     if (!tailor) {
-      return res.status(204).json({ message: "Tailor not found" });
+      return res.status(404).json({ message: "Tailor not found" });
     }
 
     if (!Array.isArray(tailor.acceptedOrders)) {
@@ -125,7 +159,7 @@ const OrderAccept = async (req, res) => {
       await tailor.save();
     }
 
-    res.status(200).json({ message: "Order accepted by tailor" });
+    res.status(200).json({ message: "Product accepted by tailor" });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -133,82 +167,132 @@ const OrderAccept = async (req, res) => {
 };
 
 
+
 const OrderReject = async (req, res) => {
-  try 
-  {
-    const { orderId, tailorId } = req.params;
+  try {
+    const { orderId, tailorId, productId, userId } = req.body;
 
-    if (!orderId || !tailorId) {
-      return res.status(400).json({ message: "Order ID and Tailor ID are required" });
+    if (!orderId || !tailorId || !productId || !userId) {
+      return res.status(400).json({ message: "Order ID, Tailor ID, Product ID, and User ID are required" });
     }
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(204).json({ message: "Order not found" });
-    }
-
+    const orderObjectId = new mongoose.Types.ObjectId(orderId);
     const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
+    const productObjectId = new mongoose.Types.ObjectId(productId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-   
+    
+    const order = await Order.findOne({
+      _id: orderObjectId,
+      userId: userObjectId,
+      "items.tailorId": tailorObjectId,
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found for this user and tailor" });
+    }
+
     let isUpdated = false;
+
     order.items = order.items.map(item => {
-      if (item.tailorId.equals(tailorObjectId)) {
+      if (
+        item.tailorId.equals(tailorObjectId) &&
+        item.productId.equals(productObjectId)
+      ) {
         item.accepted = "false";
         isUpdated = true;
+
       }
       return item;
     });
 
     if (!isUpdated) {
-      return res.status(400).json({ message: "No matching item found for this tailor" });
+      return res.status(400).json({ message: "No matching item found for this tailor and product" });
     }
 
     await order.save();
-    res.status(200).json({ message: "Order not accepted by tailor" });
 
-  } 
-  catch (error) 
-  {
+    
+    // const tailor = await Tailor.findOne({ tailorId: tailorObjectId });
+    // if (!tailor) {
+    //   return res.status(404).json({ message: "Tailor not found" });
+    // }
+
+    // if (!Array.isArray(tailor.acceptedOrders)) {
+    //   tailor.acceptedOrders = [];
+    // }
+
+    // if (!tailor.acceptedOrders.map(id => id.toString()).includes(order._id.toString())) {
+    //   tailor.acceptedOrders.push(order._id);
+    //   await tailor.save();
+    // }
+
+    res.status(200).json({ message: "Product not accepted by tailor" });
+
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-  
 
 
-const markAsCompleted= async (req, res) => {
+
+const markAsCompleted = async (req, res) => {
   try {
-    const tailorId = req.params.tailorId;
-    if (!tailorId) return res.status(400).json({ message: "Tailor ID is required" });
-
-    const tailorObjectId = new mongoose.Types.ObjectId(tailorId);
+    const { userId, tailorId, productId } = req.body;
 
    
-    const orders = await Order.find({
-      
+    const user = new mongoose.Types.ObjectId(userId);
+    const tailor = new mongoose.Types.ObjectId(tailorId);
+    const product = new mongoose.Types.ObjectId(productId);
+
+   
+    const order = await Order.findOne({
+      userId: user,
       items: {
         $elemMatch: {
-          tailorId: tailorObjectId,
-          status: "pending", 
+          productId: product,
+          tailorId: tailor,
+          status: "Pending",// after payment implementation change into pending for checking purpose only i use Processing
           accepted: "true"
         }
       }
     });
 
-    if (!orders.length) return res.status(404).json({ message: "No pending orders found" });
+    if (!order) {
+      return res.status(404).json({ message: "No matching processing order found" });
+    }
+
+    let updatedItem = null;
+
+   
+    order.items.forEach(item => {
+      if (
+        item.productId.equals(product) &&
+        item.tailorId.equals(tailor) &&
+        item.status === "Pending" &&
+        item.accepted === "true"
+      ) {
+        item.status = "Completed";
+        updatedItem = item; 
+      }
+    });
+
+    if (!updatedItem) {
+      return res.status(400).json({ message: "Item status not updated" });
+    }
 
     
-    await Promise.all(
-      orders.map(async (order) => {
-        order.items.status = "completed";
-        await order.save();
-      })
-    );
+    await order.save();
 
-    res.status(200).json({ message: `${orders.length} orders updated to completed.` });
+    
+    res.status(200).json({ message: "Product marked as completed", updatedItem });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error updating order:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
 
 
 const getOrderSummary = async (req, res) => {
@@ -234,9 +318,9 @@ const getOrderSummary = async (req, res) => {
       order.items.forEach(item => {
         if (item.tailorId.equals(tailorObjectId) && item.accepted === "true") {
           totalOrdersCount++;
-          if (item.status === "completed") {
+          if (item.status === "Completed") {
             completedOrdersCount++;
-          } else if (item.status === "pending") {
+          } else if (item.status === "Pending") {
             pendingOrdersCount++;
           }
         }
@@ -290,6 +374,19 @@ const tailorsInfo = async (req, res) => {
   }
 };
 
+const  tailorsInfobyId = async (req , res )=>{
+  try {
+    const tailor = await Tailor.findOne({ tailorId: req.params.tailorId }).populate("tailorId");
 
+    if (!tailor) {
+      return res.status(404).json({ message: "Tailor not found" });
+    }
 
-module.exports={showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,markAsCompleted , getOrderSummary,tailorsInfo};
+    res.status(200).json(tailor);
+  } catch (error) {
+    console.error("Error fetching tailor:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+module.exports={showAllOrders,getAcceptedOrders,OrderAccept,OrderReject,markAsCompleted , getOrderSummary,tailorsInfo, tailorsInfobyId};

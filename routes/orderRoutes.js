@@ -6,7 +6,9 @@ const {
     getOrderById, 
     updateOrderStatus, 
     deleteOrder,
-    confirmAndPayOrder
+    confirmAndPayOrder,
+    deleteProductFromOrder
+    
 } = require("../controllers/OrderController");
 
  
@@ -23,5 +25,6 @@ router.get("/getorders",authMiddleware, getAllOrders);
 router.get("/getorderbyid/:id", authMiddleware, getOrderById);
 router.put("/updateorder/:id", authMiddleware, updateOrderStatus);
 router.delete("/delete/:id", authMiddleware, deleteOrder);
+router.delete("/delete-single-product",  deleteProductFromOrder);
 
 module.exports = router;

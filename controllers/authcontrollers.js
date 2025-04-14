@@ -141,7 +141,7 @@ const loginUser = async (req, res) =>
           { expiresIn: '1h' }
       );
 
-        res.status(200).json({ message: "Login successful",id:user._id,token: token, userprofile:user.profile,useremail:user.email});
+        res.status(200).json({ message: "Login successful",id:user._id,token: token, userprofile:user.profile,useremail:user.email,usertype:user.usertype});
     }
     catch (error) 
     {
