@@ -112,13 +112,6 @@ const createPayment = async (req, res) => {
   }
 };
 
-
-
-
-
-
-// controllers/paymentController.js (continued)
-
 const verifyPayment = async (req, res) => {
   try {
     const {
@@ -145,7 +138,7 @@ const verifyPayment = async (req, res) => {
     // Update payment record to "Paid"
     await Payment.findOneAndUpdate(
       { razorpayOrderId: razorpay_order_id },
-      { status: "Paid" }
+      { status: "paid" }
     );
 
     // Retrieve and update order: change payment status and update each item's status

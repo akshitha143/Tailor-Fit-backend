@@ -6,19 +6,10 @@ const {createPayment}=require("../controllers/paymentController");
 const placeOrder = async (req, res) => 
 {
     try 
-    {
-       // const userId = "67f0e33ec34207c80c80f63a";  
-            const userId=req.user.userId;
-            if(!userId) return res.status(400).json({message:"userId is required"});
-        // const token = req.headers.authorization;
-        // const cartResponse = await axios.get(
-        //     `http://localhost:8000/api/cart/getcart/${userId}`,
-        //     { headers: { Authorization: token } }
-        // ); 
-
-        // const cart = cartResponse.data;
+    { 
+        const userId=req.user.userId;
+        if(!userId) return res.status(400).json({message:"userId is required"});
          const cart = await Cart.findOne({ userId });
-        //const tailorIds = cart.items.map(item => new mongoose.Types.ObjectId(item.tailorId));
 
         if (!cart || cart.items.length === 0) 
         {
@@ -43,16 +34,14 @@ const placeOrder = async (req, res) =>
         await order.save(); 
 
         await clearCart(userId);
-        await cart.save();
+        // await cart.save();
 
         
         
         res.status(200).json({
             orderId: order._id,
-            // order,
-            // success: true,
             message: "Please confirm to proceed with payment.",
-           //amount: totalAmount,
+
             
         });
 

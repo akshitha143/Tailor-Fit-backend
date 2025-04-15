@@ -11,7 +11,6 @@ const addToCart = async (req, res) => {
     const { quantity, tailorId, size } = req.body;
 
     console.log(req.body);
-
     
     if (typeof quantity !== "number" || quantity <= 0) {
       return res.status(400).json({ message: "Invalid or missing quantity" });
@@ -22,7 +21,6 @@ const addToCart = async (req, res) => {
     if (!size || typeof size !== "string") {
       return res.status(400).json({ message: "Invalid or missing size" });
     }
-
     let product;
     try {
       product = await Product.findById(productId);
@@ -108,18 +106,19 @@ const removeFromCart = async (req, res) => {
 };
 
 const clearCart = async (userId) => {
-  try {
-    if (!userId) {
-      throw new Error("User ID is required");
+    try{
+      if (!userId){
+
+          return { status: 400, message: "User ID is required" };
+      }
+        await Cart.findOneAndDelete({ userId });
+
+        return { status: 200, message: "Cart cleared successfully" };
+    } 
+    catch (error) 
+    {
+        return { status: 500, error: "Something went wrong" };
     }
-
-    await Cart.findOneAndDelete({ userId });
-
-    return { success: true, message: "Cart cleared successfully" };
-  } catch (error) {
-    console.error("Error clearing cart:", error);
-    return { success: false, error: "Something went wrong" };
-  }
 };
 
 

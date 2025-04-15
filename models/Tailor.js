@@ -1,19 +1,16 @@
 const mongoose = require("mongoose");
 
 const TailorSchema = new mongoose.Schema({
-  
-  tailorId: 
+  tailorId:
   {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
     unique: true, 
   },
-
-  rating:
-  {
+  rating:{
     type:Number,
-    default: 5 
+    default: 5
   },
   acceptedOrders: 
   [
